@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KGB Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input[type="text"] { width: 300px; padding: 8px; margin: 10px 0; }
+    ul.suggestions { 
+      border: 1px solid #ccc; 
+      max-width: 300px; 
+      margin: 0; 
+      padding: 0; 
+      list-style: none; 
+      position: absolute;
+      background: white;
+      z-index: 1000;
+	  display: grid;
+	  place-items: center;   /* shorthand for justify-content + align-items */
+    }
+    ul.suggestions li { padding: 8px; cursor: pointer; }
+    ul.suggestions li:hover { background: #f0f0f0; }
+    table { border-collapse: collapse; margin-top: 20px; width: 100%; max-width: 1000px; }
+    th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
+    th { background: #f4f4f4; }
+	
+    .container { max-width: 1000px; margin: auto; position: relative; }
+	
+    /* 🔹 Loader style */
+    .loader {
+      display: none;
+      text-align: center;
+      margin: 20px 0;
+	  
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+	  margin-top: 80px;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+	
+	.progress-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      margin: 10px auto;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    /* Base line (grey background) */
+    .progress-container::before {
+      content: "";
+      position: absolute;
+      top: 23%;
+      left: 7%;
+      width: 85%;
+      height: 2px;
+	  margin: 0 5px; /* offset so line starts under 1st circle and ends under last */
+      background: #e5e7eb;
+      transform: translateY(-50%);
+      z-index: 0;
+    }
+
+    /* Animated progress line */
+    .progress-line {
+      position: absolute;
+      top: 23%;
+      left: 7%;
+	  width: 0;
+      height: 2px;
+      transform: translateY(-50%);
+      z-index: 0;
+      transition: width 1.5s ease-in-out;
+    }
+
+    /* Line colors */
+    .line-blue {
+      background: #1d4ed8;
+    }
+    .line-red {
+      background: #dc2626;
+    }
+    .line-yellow {
+      background: #facc15;
+    }
+
+    .step {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      flex: 1;
+    }
+
+    .step .circle {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: auto auto auto auto;
+      font-size: 16px;
+      font-weight: bold;
+      color: white;
+    }
+
+    .label {
+      font-size: 14px;
+	  vertical-align: text-top;
+    }
+
+    /* Default */
+    .circle.default {
+      border: 2px solid #3b82f6;
+      background: white;
+      color: #3b82f6;
+    }
+
+    /* Active */
+    .circle.active {
+      background: #1d4ed8;
+    }
+
+    /* Success */
+    .circle.success {
+      background: #16a34a;
+    }
+
+    /* Error */
+    .circle.error {
+      background: #dc2626;
+    }
+
+    /* Warning */
+    .circle.warning {
+      background: #facc15;
+      color: black;
+    }
+
+    /* Icons */
+    .check::before {
+      content: "✓";
+    }
+    .cross::before {
+      content: "✕";
+    }
+    .exclaim::before {
+      content: "!";
+    }
+    .empty::before {
+      content: "";
+    }
+
+    /* Animation for last step */
+    .circle.animated {
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 15px rgba(22, 163, 74, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+      }
+    }
+	
+	table, th, td {
+        border: none;
+    }
+	
+	table {
+		table-layout: fixed;
+		width: 100%;
+		margin-bottom: 20px;
+		font-size: 14px;
+	}
+	
+	.tdColor {background-color: #F5F5F5;}
+	
+	td {
+		vertical-align: top;
+	}
+	
+	.tableStep {
+		table-layout: fixed;
+		width: 100%;
+	}
+	
+	.tableDetail {
+		table-layout: fixed;
+		width: 100%;
+		margin-bottom: 20px;
+		border-left: 1px solid;
+		border-right: 1px solid;
+		border-color: black;
+	}
+	
+	.topRow {
+		border-top: 1px solid;
+		border-color: black;
+	}
+	
+	.bottomRow {
+		border-bottom: 1px solid;
+		border-color: black;
+	}
+	
+	.middleColumn {
+		width: 10px;
+		border-left: 1px solid;
+		border-right: 1px solid;
+		border-color: black;
+	}
+	
+	.rowHeader {
+		border-right: 1px solid;
+		border-right-color: #7F7F7F;
+		font-weight: bold;
+	}
+	
+	.keterangan {
+		font-size: 14px;
+	}
+	
+  </style>
+</head>
+<body>
+	
+	<div class="container">
+		<img src="https://drive.google.com/thumbnail?id=1bd-vVB6xlXJTT0YWbA-lbtm9BPwMUUvQ" alt="DJKI" style="margin-top:-20px; margin-left:-10px; margin-bottom:-15px;">
+		
+		<div>
+			<h2 style="margin-bottom:5px;">KGB Tracker</h2>
+			<label for="nipSearch">Search NIP:</label><br>
+			<input type="text" id="nipSearch" placeholder="Type NIP...">
+			<ul id="suggestions" class="suggestions"></ul>
+		</div>
+	  
+	  <!-- 🔹 Loader -->
+	  <div id="loader" class="loader">
+		<div class="spinner"></div> 
+		<div>Loading data, please wait...</div>
+	  </div>
+	  
+	  <div id="details"></div>
+	  <div id="result"></div>
+	  
+	  <!-- Progress Tracker 5 Steps -->
+	  <div id="tracker-container" class="progress-container">
+		<div id="progress-line" class="progress-line line-blue" data-width="0%"></div>
+		
+		<!-- code awal step progress
+		<div class="step">
+		  <div id="step1" class="circle default empty"></div>
+		  <div id="label1" class="label">1</div>
+		</div>
+		<div class="step">
+		  <div id="step2" class="circle default empty"></div>
+		  <div id="label2" class="label">2</div>
+		</div>
+		<div class="step">
+		  <div id="step3" class="circle default empty"></div>
+		  <div id="label3" class="label">3</div>
+		</div>
+		<div class="step">
+		  <div id="step4" class="circle default empty"></div>
+		  <div id="label4" class="label">4</div>
+		</div>
+		<div class="step">
+		  <div id="step5" class="circle default empty"></div>
+		  <div id="label5" class="label">5</div>
+		</div>
+		-->
+		
+		<div>
+			<table class="tableStep">
+				<tbody>
+					<tr>
+						<td>
+							<div class="step">
+							  <div id="step1" class="circle default empty"></div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="step2" class="circle default empty"></div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="step3" class="circle default empty"></div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="step4" class="circle default empty"></div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="step5" class="circle default empty"></div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="step6" class="circle default empty"></div>
+							</div>
+						</td>
+						<td id="c71">
+							<div class="step">
+							  <div id="step7" class="circle default empty"></div>
+							</div>
+						</td>
+					</tr>
+					
+					<tr>
+						<td>
+							<div class="step">
+							  <div id="label1" class="label">1</div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="label2" class="label">2</div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="label3" class="label">3</div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="label4" class="label">4</div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="label5" class="label">5</div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="label6" class="label">6</div>
+							</div>
+						</td>
+						<td id="c72">
+							<div class="step">
+							  <div id="label7" class="label">7</div>
+							</div>
+						</td>
+					</tr>
+					
+					<tr>
+						<td>
+							<div class="step">
+							  <div id="date1" class="label"></div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="date2" class="label"></div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="date3" class="label"></div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="date4" class="label"></div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="date5" class="label"></div>
+							</div>
+						</td>
+						<td>
+							<div class="step">
+							  <div id="date6" class="label"></div>
+							</div>
+						</td>
+						<td id="c73">
+							<div class="step">
+							  <div id="date7" class="label"></div>
+							</div>
+						</td>
+					</tr>
+					
+				</tbody>
+			</table>
+		</div>
+	  </div>
+		
+		<div id="detilSK" style="text-align:left;">
+			<table class="tableDetail">
+				<tbody>
+					<tr>
+						<td class="topRow rowHeader">No SK</td>
+						<td id="dSKnosk" class="topRow"></td>
+						<td class="middleColumn"></td>
+						<td class="topRow rowHeader">Masa Kerja Tahun</td>
+						<td id="dSKmkt" class="topRow"></td>
+					</tr>
+					<tr>
+						<td class="rowHeader tdColor">Tanggal SK</td>
+						<td id="dSKtglsk" class="tdColor"></td>
+						<td class="middleColumn"></td>
+						<td class="rowHeader tdColor">Masa Kerja Bulan</td>
+						<td id="dSKmkb" class="tdColor"></td>
+					</tr>
+					<tr>
+						<td class="rowHeader">TMT SK</td>
+						<td id="dSKtmtsk"></td>
+						<td class="middleColumn"></td>
+						<td class="rowHeader">Pejabat Penetap</td>
+						<td id="dSKpp"></td>
+					</tr>
+					<tr>
+						<td class="rowHeader tdColor">Pangkat</td>
+						<td id="dSKp" class="tdColor"></td>
+						<td class="middleColumn"></td>
+						<td class="rowHeader tdColor">Jenis Kenaikan Gaji</td>
+						<td id="dSKjkg" class="tdColor"></td>
+					</tr>
+					<tr>
+						<td class="bottomRow rowHeader">Gaji Pokok</td>
+						<td id="dSKgp" class="bottomRow"></td>
+						<td class="middleColumn"></td>
+						<td class="bottomRow rowHeader">KPPN</td>
+						<td id="dSKkppn" class="bottomRow"></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		
+		<div id="keterangan" class="keterangan" style="text-align:left;">
+			<p id="judulket" style="font-weight: bold;">Penanggung Jawab Tahap</p>
+			<p id="namatim">Tim</p>
+			<p id="kontaktim">Kontak</p>
+		</div>
+	  
+	</div>
+
+	<script>
+	  // 🔹 Replace with your Apps Script Web App URL
+	  const sheetURL = "https://script.google.com/macros/s/AKfycbyPLsAyQDSLvRtfc7GfbLd1RPuZyNvLF57-zPgYOjHz0NBkKCsGQeE6cweHRewW0bPI/exec";
+	  const sheetURLliststep = "https://script.google.com/macros/s/AKfycbyoDPxiW7tfLTs_4UvuCapDfA-DcEX79G7wObh0EOX77JgVBlNFYOTix2BibhuMjkLP/exec";
+
+	  let staffData = [];
+	  let headers = [];
+	  
+	  let liststepData = [];
+	  let liststepHeaders = [];
+	  
+	  let result = [];
+
+	  async function fetchData() {
+		const loader = document.getElementById("loader");
+		const progressBar = document.querySelector(".progress-bar");
+		const progressText = document.getElementById("progressText");
+		const trackerContainer = document.getElementById("tracker-container");
+		const divKeterangan = document.getElementById("keterangan");
+		const divDetailSK = document.getElementById("detilSK");
+		
+		trackerContainer.style.display = "none"; // hide tracker
+		divDetailSK.style.display = "none"; // hide detail SK
+		divKeterangan.style.display = "none"; // hide keterangan
+
+		loader.style.display = "block"; // show loader
+
+		try {
+		  const response = await fetch(sheetURL);
+		  staffData = await response.json();
+
+		  if (staffData.length > 0) {
+			headers = Object.keys(staffData[0]);
+		  }
+		  
+		  const responseListStep = await fetch(sheetURLliststep);
+		  liststepData = await responseListStep.json();
+
+		  if (liststepData.length > 0) {
+			liststepHeaders = Object.keys(liststepData[0]);
+			
+			result = liststepData.find(row => row["Nomor"] === 1);
+			document.getElementById("label1").textContent = result["Status"];
+			
+			result = liststepData.find(row => row["Nomor"] === 2);
+			document.getElementById("label2").textContent = result["Status"];
+			
+			result = liststepData.find(row => row["Nomor"] === 3);
+			document.getElementById("label3").textContent = result["Status"];
+			
+			result = liststepData.find(row => row["Nomor"] === 4);
+			document.getElementById("label4").textContent = result["Status"];
+			
+			result = liststepData.find(row => row["Nomor"] === 5);
+			document.getElementById("label5").textContent = result["Status"];
+			
+			result = liststepData.find(row => row["Nomor"] === 6);
+			document.getElementById("label6").textContent = result["Status"];
+		  }
+
+		} catch (err) {
+		  console.error("Error fetching data:", err);
+		  alert("Failed to load data. Please try again later.");
+		} finally {
+			loader.style.display = "none"; // hide loader
+		}
+
+	  }
+
+
+	  function showSuggestions(query) {
+		const suggestionsBox = document.getElementById("suggestions");
+		suggestionsBox.innerHTML = "";
+
+		if (query.length < 1) return;
+
+		const matches = staffData.filter(r => r["NIP"].toString().includes(query));
+		
+		matches.forEach(match => {
+		  const li = document.createElement("li");
+		  li.textContent = match["NIP"];
+		  li.onclick = () => {
+			document.getElementById("nipSearch").value = match["NIP"];
+			suggestionsBox.innerHTML = "";
+			showDetails(match["NIP"]);
+		  };
+		  suggestionsBox.appendChild(li);
+		});
+	  }
+
+
+	  function showDetails(nip) {
+		const detailsDiv = document.getElementById("details");
+		detailsDiv.innerHTML = "";
+		
+		const staff = staffData.find(r => r["NIP"].toString() === nip);
+		if (!staff) return;
+		
+		const trackerContainer = document.getElementById("tracker-container");
+		trackerContainer.style.display = "none"; // hide tracker
+		
+		const cell71 = document.getElementById("c71");
+		const cell72 = document.getElementById("c72");
+		const cell73 = document.getElementById("c73");
+		cell71.style.display = "none"; // hide cell71
+		cell72.style.display = "none"; // hide cell72
+		cell73.style.display = "none"; // hide cell73
+		
+		const divDetailSK = document.getElementById("detilSK");
+		divDetailSK.style.display = "none"; // hide tabel detilSK
+		
+		const divKeterangan = document.getElementById("keterangan");
+		divKeterangan.style.display = "none"; // hide keterangan
+		
+		/*
+		const paraNIP = document.createElement("p");
+		const paraNoSK = document.createElement("p");
+		
+		const nodeNIP = document.createTextNode(staff["NIP"]);
+		paraNIP.appendChild(nodeNIP);
+		const nodeNoSK = document.createTextNode(staff["Nomor SK Terakhir"]);
+		paraNoSK.appendChild(nodeNoSK);
+		
+		const element = document.getElementById("details");
+		element.appendChild(paraNIP);
+		element.appendChild(paraNoSK);
+		*/
+		
+		const sheetURLlastprogress = "https://script.google.com/macros/s/AKfycbzN_NG4MuLUT7AhpF6MECPsx9zItg7pX8o_biWCfohjACttkqe2LVdm3XZOqUDvACWU/exec";
+		let progressData = [];
+		let headersProgress = [];
+		let result = [];
+		let counterProgress = 0;
+		let progressStatus = 0;
+		
+		async function fetchDataLastProgress() {
+			const loader = document.getElementById("loader");
+			loader.style.display = "block"; // show loader
+			//element.appendChild(document.createElement("p").appendChild(document.createTextNode("Run fetchDataLastProgress")));
+			
+			const resultDiv = document.getElementById("result");
+			
+			const jk = document.getElementById("judulket");
+			const nt = document.getElementById("namatim");
+			const kt = document.getElementById("kontaktim");
+			
+			try {
+			  const responseLP = await fetch(sheetURLlastprogress);
+			  progressData = await responseLP.json();
+
+			  if (progressData.length > 0) {
+				headersProgress = Object.keys(progressData[0]);
+				//element.appendChild(document.createElement("p").appendChild(document.createTextNode(progressData.length)));
+			  }
+			  else
+			  {
+				resultDiv.innerHTML = "<p>No matching data found.</p>";
+				return;
+			  }
+			  
+			  const table = document.createElement("table");
+			  const headerRow = document.createElement("tr");
+
+			  Object.keys(progressData[0]).forEach(h => {
+				const th = document.createElement("th");
+				th.textContent = h;
+				headerRow.appendChild(th);
+			  });
+			  table.appendChild(headerRow);
+
+			  progressData.forEach(record => {
+				if(record["NIP"]===nip && record["No SK"]===staff["Nomor SK Terakhir"]) {
+					const row = document.createElement("tr");
+					Object.values(record).forEach(v => {
+					  const td = document.createElement("td");
+					  td.textContent = v;
+					  row.appendChild(td);
+					});
+					
+					table.appendChild(row);
+					counterProgress += 1;
+					
+					/*if(Number(record["Status"].slice(-4).slice(1)) > progressStatus) {
+						progressStatus = ;
+					}*/
+					
+					let stringStatus = record["Status"].slice(-4);
+					if(progressStatus < Number(stringStatus[0])) {
+						progressStatus = Number(stringStatus[0]);
+					}
+					//console.log();
+				}
+			  });
+			  
+			  
+			  
+			  /*const element = document.getElementById("details");
+			  element.appendChild(document.createElement("p").appendChild(document.createTextNode(counterProgress)));*/
+			  
+			  const progressPercentage = document.getElementById("progress-line");
+			  const stepsAt1 = document.getElementById("step1");
+			  const stepsAt2 = document.getElementById("step2");
+			  const stepsAt3 = document.getElementById("step3");
+			  const stepsAt4 = document.getElementById("step4");
+			  const stepsAt5 = document.getElementById("step5");
+			  const stepsAt6 = document.getElementById("step6");
+			  const stepsAt7 = document.getElementById("step7");
+			  let tempLabel = "";
+			  let tempTanggalInput = new Date("2025-01-31");
+			  const optionsDate = {
+				day: 'numeric',
+				month: 'numeric',
+				year: 'numeric'
+			  }
+			  
+			  stepsAt1.classList.remove("circle","default","active","success","error","warning","check","cross","exclaim","empty","animated");
+			  stepsAt2.classList.remove("circle","default","active","success","error","warning","check","cross","exclaim","empty","animated");
+			  stepsAt3.classList.remove("circle","default","active","success","error","warning","check","cross","exclaim","empty","animated");
+			  stepsAt4.classList.remove("circle","default","active","success","error","warning","check","cross","exclaim","empty","animated");
+			  stepsAt5.classList.remove("circle","default","active","success","error","warning","check","cross","exclaim","empty","animated");
+			  stepsAt6.classList.remove("circle","default","active","success","error","warning","check","cross","exclaim","empty","animated");
+			  stepsAt7.classList.remove("circle","default","active","success","error","warning","check","cross","exclaim","empty","animated");
+			  progressPercentage.setAttribute("data-width", "0%");
+			  progressPercentage.style.width = "0%";
+			  
+			  //console.log(progressStatus);
+			  
+			  if(progressStatus===1) {
+				setTimeout(() => {
+					progressPercentage.setAttribute("data-width", "0%");
+					progressPercentage.style.width = "0%";
+				}, 200); // delay for smooth animation
+				stepsAt1.classList.add("circle");
+				stepsAt1.classList.add("warning");
+				stepsAt1.classList.add("check");
+				stepsAt1.classList.add("animated");
+				
+				stepsAt2.classList.add("circle");
+				stepsAt2.classList.add("default");
+				stepsAt2.classList.add("empty");
+				stepsAt3.classList.add("circle");
+				stepsAt3.classList.add("default");
+				stepsAt3.classList.add("empty");
+				stepsAt4.classList.add("circle");
+				stepsAt4.classList.add("default");
+				stepsAt4.classList.add("empty");
+				stepsAt5.classList.add("circle");
+				stepsAt5.classList.add("default");
+				stepsAt5.classList.add("empty");
+				stepsAt6.classList.add("circle");
+				stepsAt6.classList.add("default");
+				stepsAt6.classList.add("empty");
+			  }
+			  if(progressStatus===2) {
+				setTimeout(() => {
+					progressPercentage.setAttribute("data-width", "18%");
+					progressPercentage.style.width = "18%";
+				}, 200); // delay for smooth animation
+				stepsAt1.classList.add("circle");
+				stepsAt1.classList.add("active");
+				stepsAt1.classList.add("check");
+				
+				stepsAt2.classList.add("circle");
+				stepsAt2.classList.add("warning");
+				stepsAt2.classList.add("check");
+				stepsAt2.classList.add("animated");
+				
+				stepsAt3.classList.add("circle");
+				stepsAt3.classList.add("default");
+				stepsAt3.classList.add("empty");
+				stepsAt4.classList.add("circle");
+				stepsAt4.classList.add("default");
+				stepsAt4.classList.add("empty");
+				stepsAt5.classList.add("circle");
+				stepsAt5.classList.add("default");
+				stepsAt5.classList.add("empty");
+				stepsAt6.classList.add("circle");
+				stepsAt6.classList.add("default");
+				stepsAt6.classList.add("empty");
+			  }
+			  if(progressStatus===3) {
+				setTimeout(() => {
+					progressPercentage.setAttribute("data-width", "35%");
+					progressPercentage.style.width = "35%";
+				}, 200); // delay for smooth animation
+				stepsAt1.classList.add("circle");
+				stepsAt1.classList.add("active");
+				stepsAt1.classList.add("check");
+				stepsAt2.classList.add("circle");
+				stepsAt2.classList.add("active");
+				stepsAt2.classList.add("check");
+				
+				stepsAt3.classList.add("circle");
+				stepsAt3.classList.add("warning");
+				stepsAt3.classList.add("check");
+				stepsAt3.classList.add("animated");
+				
+				stepsAt4.classList.add("circle");
+				stepsAt4.classList.add("default");
+				stepsAt4.classList.add("empty");
+				stepsAt5.classList.add("circle");
+				stepsAt5.classList.add("default");
+				stepsAt5.classList.add("empty");
+				stepsAt6.classList.add("circle");
+				stepsAt6.classList.add("default");
+				stepsAt6.classList.add("empty");
+			  }
+			  if(progressStatus===4) {
+				setTimeout(() => {
+					progressPercentage.setAttribute("data-width", "50%");
+					progressPercentage.style.width = "50%";
+				}, 200); // delay for smooth animation
+				stepsAt1.classList.add("circle");
+				stepsAt1.classList.add("active");
+				stepsAt1.classList.add("check");
+				stepsAt2.classList.add("circle");
+				stepsAt2.classList.add("active");
+				stepsAt2.classList.add("check");
+				stepsAt3.classList.add("circle");
+				stepsAt3.classList.add("active");
+				stepsAt3.classList.add("check");
+				
+				stepsAt4.classList.add("circle");
+				stepsAt4.classList.add("warning");
+				stepsAt4.classList.add("check");
+				stepsAt4.classList.add("animated");
+				
+				stepsAt5.classList.add("circle");
+				stepsAt5.classList.add("default");
+				stepsAt5.classList.add("empty");
+				stepsAt6.classList.add("circle");
+				stepsAt6.classList.add("default");
+				stepsAt6.classList.add("empty");
+			  }
+			  if(progressStatus===5) {
+				setTimeout(() => {
+					progressPercentage.setAttribute("data-width", "68%");
+					progressPercentage.style.width = "68%";
+				}, 200); // delay for smooth animation
+				stepsAt1.classList.add("circle");
+				stepsAt1.classList.add("active");
+				stepsAt1.classList.add("check");
+				stepsAt2.classList.add("circle");
+				stepsAt2.classList.add("active");
+				stepsAt2.classList.add("check");
+				stepsAt3.classList.add("circle");
+				stepsAt3.classList.add("active");
+				stepsAt3.classList.add("check");
+				stepsAt4.classList.add("circle");
+				stepsAt4.classList.add("active");
+				stepsAt4.classList.add("check");
+				
+				stepsAt5.classList.add("circle");
+				stepsAt5.classList.add("warning");
+				stepsAt5.classList.add("check");
+				stepsAt5.classList.add("animated");
+				
+				stepsAt6.classList.add("circle");
+				stepsAt6.classList.add("default");
+				stepsAt6.classList.add("empty");
+				
+				//console.log(result["Tanggal Input"]);
+			  }
+			  if(progressStatus===6) {
+				setTimeout(() => {
+					progressPercentage.setAttribute("data-width", "70%");
+					progressPercentage.style.width = "70%";
+				}, 200); // delay for smooth animation
+				stepsAt1.classList.add("circle");
+				stepsAt1.classList.add("active");
+				stepsAt1.classList.add("check");
+				stepsAt2.classList.add("circle");
+				stepsAt2.classList.add("active");
+				stepsAt2.classList.add("check");
+				stepsAt3.classList.add("circle");
+				stepsAt3.classList.add("active");
+				stepsAt3.classList.add("check");
+				stepsAt4.classList.add("circle");
+				stepsAt4.classList.add("active");
+				stepsAt4.classList.add("check");
+				stepsAt5.classList.add("circle");
+				stepsAt5.classList.add("active");
+				stepsAt5.classList.add("check");
+				
+				stepsAt6.classList.add("circle");
+				stepsAt6.classList.add("success");
+				stepsAt6.classList.add("check");
+				stepsAt6.classList.add("animated");
+				
+				stepsAt7.classList.add("circle");
+				stepsAt7.classList.add("warning");
+				stepsAt7.classList.add("exclaim");
+				
+				//console.log(result["Tanggal Input"]);
+			  }
+			  
+				//get by filter status, nip, no sk 
+				tempLabel = document.getElementById("label1").textContent;
+				result = progressData.find(row => row["Status"] === tempLabel && row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
+				//get tanggal input, show as local format
+				if(result?.["Tanggal Input"]) {
+					tempTanggalInput = new Date(result["Tanggal Input"]);
+					document.getElementById("label1").textContent = result["Status"];
+					document.getElementById("date1").textContent = `${tempTanggalInput.getDate().toString().padStart(2, '0')}-${(tempTanggalInput.getMonth() + 1).toString().padStart(2, '0')}-${tempTanggalInput.getFullYear()}`;
+				}
+				else {
+					document.getElementById("date1").textContent = "";
+				}
+				
+				//get by filter status, nip, no sk 
+				tempLabel = document.getElementById("label2").textContent;
+				result = progressData.find(row => row["Status"] === tempLabel && row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
+				//get tanggal input, show as local format
+				if(result?.["Tanggal Input"]) {
+					tempTanggalInput = new Date(result["Tanggal Input"]);
+					document.getElementById("label2").textContent = result["Status"];
+					document.getElementById("date2").textContent = `${tempTanggalInput.getDate().toString().padStart(2, '0')}-${(tempTanggalInput.getMonth() + 1).toString().padStart(2, '0')}-${tempTanggalInput.getFullYear()}`;
+				}
+				else {
+					document.getElementById("date2").textContent = "";
+				}
+				
+				//get by filter status, nip, no sk 
+				tempLabel = document.getElementById("label3").textContent;
+				result = progressData.find(row => row["Status"] === tempLabel && row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
+				//get tanggal input, show as local format
+				if(result?.["Tanggal Input"]) {
+					tempTanggalInput = new Date(result["Tanggal Input"]);
+					document.getElementById("label3").textContent = result["Status"];
+					document.getElementById("date3").textContent = `${tempTanggalInput.getDate().toString().padStart(2, '0')}-${(tempTanggalInput.getMonth() + 1).toString().padStart(2, '0')}-${tempTanggalInput.getFullYear()}`;
+				}
+				else {
+					document.getElementById("date3").textContent = "";
+				}
+				
+				//get by filter status, nip, no sk 
+				tempLabel = document.getElementById("label4").textContent;
+				result = progressData.find(row => row["Status"] === tempLabel && row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
+				//get tanggal input, show as local format
+				if(result?.["Tanggal Input"]) {
+					tempTanggalInput = new Date(result["Tanggal Input"]);
+					document.getElementById("label4").textContent = result["Status"];
+					document.getElementById("date4").textContent = `${tempTanggalInput.getDate().toString().padStart(2, '0')}-${(tempTanggalInput.getMonth() + 1).toString().padStart(2, '0')}-${tempTanggalInput.getFullYear()}`;
+				}
+				else {
+					document.getElementById("date4").textContent = "";
+				}
+				
+				//get by filter status, nip, no sk 
+				tempLabel = document.getElementById("label5").textContent;
+				result = progressData.find(row => row["Status"] === tempLabel && row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
+				//get tanggal input, show as local format
+				if(result?.["Tanggal Input"]) {
+					tempTanggalInput = new Date(result["Tanggal Input"]);
+					document.getElementById("label5").textContent = result["Status"];
+					document.getElementById("date5").textContent = `${tempTanggalInput.getDate().toString().padStart(2, '0')}-${(tempTanggalInput.getMonth() + 1).toString().padStart(2, '0')}-${tempTanggalInput.getFullYear()}`;
+				}
+				else {
+					document.getElementById("date5").textContent = "";
+				}
+				
+				//get by filter status, nip, no sk 
+				tempLabel = document.getElementById("label6").textContent;
+				result = progressData.find(row => row["Status"] === tempLabel && row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
+				//get tanggal input, show as local format
+				if(result?.["Tanggal Input"]) {
+					tempTanggalInput = new Date(result["Tanggal Input"]);
+					document.getElementById("label6").textContent = result["Status"];
+					document.getElementById("date6").textContent = `${tempTanggalInput.getDate().toString().padStart(2, '0')}-${(tempTanggalInput.getMonth() + 1).toString().padStart(2, '0')}-${tempTanggalInput.getFullYear()}`;
+				}
+				else {
+					document.getElementById("date6").textContent = "";
+				}
+				
+				//get by filter status, nip, no sk 
+				tempLabel = document.getElementById("label7").textContent;
+				result = progressData.find(row => row["Status"] === tempLabel && row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
+				//get tanggal input, show as local format
+				if(result?.["Tanggal Input"]) {
+					tempTanggalInput = new Date(result["Tanggal Input"]);
+					document.getElementById("label7").textContent = result["Status"];
+					document.getElementById("date7").textContent = `${tempTanggalInput.getDate().toString().padStart(2, '0')}-${(tempTanggalInput.getMonth() + 1).toString().padStart(2, '0')}-${tempTanggalInput.getFullYear()}`;
+				}
+				else {
+					document.getElementById("date7").textContent = "";
+				}
+				
+
+			  //resultDiv.innerHTML = "";
+			  //resultDiv.appendChild(table);
+			  
+			  trackerContainer.style.display = ""; //show tracker
+			  
+			  result = progressData.find(row => /*row["Status"] === tempLabel &&*/ row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
+			  document.getElementById("dSKnosk").textContent = result["No SK"];
+			  
+			  tempTanggalInput = new Date(result["Tgl SK"]);
+			  if(tempTanggalInput.getDate().toString().padStart(2, '0')==="NaN") {
+				document.getElementById("dSKtglsk").textContent = "";
+			  }
+			  else
+				{document.getElementById("dSKtglsk").textContent = `${tempTanggalInput.getDate().toString().padStart(2, '0')}-${(tempTanggalInput.getMonth() + 1).toString().padStart(2, '0')}-${tempTanggalInput.getFullYear()}`;}
+			  
+			  tempTanggalInput = new Date(result["TMT SK"]);
+			  if(tempTanggalInput.getDate().toString().padStart(2, '0')==="NaN") {
+				document.getElementById("dSKtmtsk").textContent = "";
+			  }
+			  else
+				{document.getElementById("dSKtmtsk").textContent = `${tempTanggalInput.getDate().toString().padStart(2, '0')}-${(tempTanggalInput.getMonth() + 1).toString().padStart(2, '0')}-${tempTanggalInput.getFullYear()}`;}
+			  
+			  document.getElementById("dSKp").textContent = result["Pangkat"];
+			  
+			  //german format
+			  const deFormatter = new Intl.NumberFormat('de-DE');
+			  document.getElementById("dSKgp").textContent = "Rp " + deFormatter.format(result["Gaji Pokok"]);
+			  
+			  if(progressStatus===6) {
+				  cell71.style.display = ""; // show cell71
+				  cell72.style.display = ""; // show cell72
+				  cell73.style.display = ""; // show cell73
+				  
+				  document.getElementById("label7").textContent = "";
+				  document.getElementById("label7").innerHTML = "Gaji Berkala Selanjutnya<br>Rp " + deFormatter.format(staff["Nominal Gaji Berkala Selanjutnya"]);
+				  
+				  tempTanggalInput = new Date(staff["KGB Selanjutnya"]);
+				  document.getElementById("date7").textContent = "";
+				  if(tempTanggalInput.getDate().toString().padStart(2, '0')==="NaN") {
+					document.getElementById("date7").textContent = "";
+				  }
+				  else {
+					document.getElementById("date7").textContent = `${tempTanggalInput.getDate().toString().padStart(2, '0')}-${(tempTanggalInput.getMonth() + 1).toString().padStart(2, '0')}-${tempTanggalInput.getFullYear()}`;
+				  }
+				  //console.log(staff);
+			  }
+			  
+			  document.getElementById("dSKmkt").textContent = result["Masa Kerja Th"];
+			  document.getElementById("dSKmkb").textContent = result["Masa Kerja Bl"];
+			  document.getElementById("dSKpp").textContent = result["Pejabat Penetap"];
+			  document.getElementById("dSKjkg").textContent = result["Jenis Kenaikan Gaji"];
+			  document.getElementById("dSKkppn").textContent = result["KPPN"];
+			  
+			  jk.textContent = "";
+			  jk.textContent = "Penanggung Jawab Tahap " + counterProgress + ":";
+			  result = liststepData.find(row => row["Nomor"] === counterProgress);
+			  nt.textContent = result["Penanggung Jawab"];
+			  kt.textContent = result["Kontak"];
+			  
+			  divDetailSK.style.display = "block"; //show detail SK
+			  divKeterangan.style.display = "block"; //show keterangan
+
+			} catch (err) {
+			  console.error("Error fetching data:", err);
+			  alert("Failed to load data. Please try again later.");
+			} finally {
+				loader.style.display = "none"; // hide loader
+			}
+		}
+		fetchDataLastProgress();
+		
+		
+		
+		const lp = progressData.find(rowLP => rowLP["NIP"].toString() === nip);
+		if (!lp) {
+			return;
+		}
+	  }
+
+	 
+	  document.getElementById("nipSearch").addEventListener("input", (e) => {
+		showSuggestions(e.target.value);
+	  });
+
+	  fetchData();
+	</script>
+
+</body>
+</html>
