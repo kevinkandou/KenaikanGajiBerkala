@@ -5,7 +5,7 @@
   <title>KGB Tracker</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
-    input[type="text"] { width: 300px; padding: 8px; margin: 10px 0; }
+    input[type="text"] { width: 200px; padding: 8px; margin: 10px 0; }
     ul.suggestions { 
       border: 1px solid #ccc; 
       max-width: 300px; 
@@ -31,7 +31,6 @@
       display: none;
       text-align: center;
       margin: 20px 0;
-	  
     }
     .spinner {
       border: 4px solid #f3f3f3;
@@ -41,7 +40,7 @@
       height: 30px;
       animation: spin 1s linear infinite;
       display: inline-block;
-	  margin-top: 80px;
+	  	margin-top: 80px;
       margin-right: 10px;
     }
     @keyframes spin {
@@ -67,7 +66,7 @@
       left: 7%;
       width: 85%;
       height: 2px;
-	  margin: 0 5px; /* offset so line starts under 1st circle and ends under last */
+	  	margin: 0 5px; /* offset so line starts under 1st circle and ends under last */
       background: #e5e7eb;
       transform: translateY(-50%);
       z-index: 0;
@@ -78,7 +77,7 @@
       position: absolute;
       top: 23%;
       left: 7%;
-	  width: 0;
+	  	width: 0;
       height: 2px;
       transform: translateY(-50%);
       z-index: 0;
@@ -238,6 +237,16 @@
 		font-size: 14px;
 	}
 	
+	.tableSearch {
+		margin-top: -8px;
+	}
+
+	.labelNamaPegawai {
+		vertical-align: middle;
+		text-align: right;
+		font-size: 18px;
+	}
+
   </style>
 </head>
 <body>
@@ -248,7 +257,20 @@
 		<div>
 			<h2 style="margin-bottom:5px;">KGB Tracker</h2>
 			<label for="nipSearch">Search NIP:</label><br>
-			<input type="text" id="nipSearch" placeholder="Type NIP...">
+
+			<table class="tableSearch">
+				<tbody>
+					<tr>
+						<td>
+							<input type="text" id="nipSearch" placeholder="Type NIP...">
+						</td>
+						<td class="labelNamaPegawai">
+							<label id="namaPegawai"></label>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			
 			<ul id="suggestions" class="suggestions"></ul>
 		</div>
 	  
@@ -457,13 +479,17 @@
 			<p id="namatim">Tim</p>
 			<p id="kontaktim">Kontak</p>
 		</div>
-	  
 	</div>
 
 	<script>
 	  // 🔹 Replace with your Apps Script Web App URL
 	  const sheetURL = "https://script.google.com/macros/s/AKfycbyPLsAyQDSLvRtfc7GfbLd1RPuZyNvLF57-zPgYOjHz0NBkKCsGQeE6cweHRewW0bPI/exec";
 	  const sheetURLliststep = "https://script.google.com/macros/s/AKfycbyoDPxiW7tfLTs_4UvuCapDfA-DcEX79G7wObh0EOX77JgVBlNFYOTix2BibhuMjkLP/exec";
+	  
+	  const sheetURLlast4years = "https://script.google.com/macros/s/AKfycbx0Vs5buCmx7j1AB9GhsQ0tPwkfNxeG3Az-buRZjWBAG0fDEEQx1scTHzIBIAgB3XvF/exec";
+	  let nipLast4Years = [];
+	  let headersLast4Years = [];
+	  let nipforsuggestion = [];
 
 	  let staffData = [];
 	  let headers = [];
@@ -474,59 +500,131 @@
 	  let result = [];
 
 	  async function fetchData() {
-		const loader = document.getElementById("loader");
-		const progressBar = document.querySelector(".progress-bar");
-		const progressText = document.getElementById("progressText");
-		const trackerContainer = document.getElementById("tracker-container");
-		const divKeterangan = document.getElementById("keterangan");
-		const divDetailSK = document.getElementById("detilSK");
-		
-		trackerContainer.style.display = "none"; // hide tracker
-		divDetailSK.style.display = "none"; // hide detail SK
-		divKeterangan.style.display = "none"; // hide keterangan
-
-		loader.style.display = "block"; // show loader
-
-		try {
-		  const response = await fetch(sheetURL);
-		  staffData = await response.json();
-
-		  if (staffData.length > 0) {
-			headers = Object.keys(staffData[0]);
-		  }
-		  
-		  const responseListStep = await fetch(sheetURLliststep);
-		  liststepData = await responseListStep.json();
-
-		  if (liststepData.length > 0) {
-			liststepHeaders = Object.keys(liststepData[0]);
+			const loader = document.getElementById("loader");
+			const progressBar = document.querySelector(".progress-bar");
+			const progressText = document.getElementById("progressText");
+			const trackerContainer = document.getElementById("tracker-container");
+			const divKeterangan = document.getElementById("keterangan");
+			const divDetailSK = document.getElementById("detilSK");
 			
-			result = liststepData.find(row => row["Nomor"] === 1);
-			document.getElementById("label1").textContent = result["Status"];
-			
-			result = liststepData.find(row => row["Nomor"] === 2);
-			document.getElementById("label2").textContent = result["Status"];
-			
-			result = liststepData.find(row => row["Nomor"] === 3);
-			document.getElementById("label3").textContent = result["Status"];
-			
-			result = liststepData.find(row => row["Nomor"] === 4);
-			document.getElementById("label4").textContent = result["Status"];
-			
-			result = liststepData.find(row => row["Nomor"] === 5);
-			document.getElementById("label5").textContent = result["Status"];
-			
-			result = liststepData.find(row => row["Nomor"] === 6);
-			document.getElementById("label6").textContent = result["Status"];
-		  }
+			trackerContainer.style.display = "none"; // hide tracker
+			divDetailSK.style.display = "none"; // hide detail SK
+			divKeterangan.style.display = "none"; // hide keterangan
 
-		} catch (err) {
-		  console.error("Error fetching data:", err);
-		  alert("Failed to load data. Please try again later.");
-		} finally {
-			loader.style.display = "none"; // hide loader
-		}
+			document.getElementById("nipSearch").disabled = true;
+			loader.style.display = "block"; // show loader
 
+				/*try {
+				  const response = await fetch(sheetURL);
+				  staffData = await response.json();
+
+				  if (staffData.length > 0) {
+					headers = Object.keys(staffData[0]);
+				  }
+				  
+				  const responseListStep = await fetch(sheetURLliststep);
+				  liststepData = await responseListStep.json();
+
+				  if (liststepData.length > 0) {
+						liststepHeaders = Object.keys(liststepData[0]);
+						
+						result = liststepData.find(row => row["Nomor"] === 1);
+						document.getElementById("label1").textContent = result["Status"];
+						
+						result = liststepData.find(row => row["Nomor"] === 2);
+						document.getElementById("label2").textContent = result["Status"];
+						
+						result = liststepData.find(row => row["Nomor"] === 3);
+						document.getElementById("label3").textContent = result["Status"];
+						
+						result = liststepData.find(row => row["Nomor"] === 4);
+						document.getElementById("label4").textContent = result["Status"];
+						
+						result = liststepData.find(row => row["Nomor"] === 5);
+						document.getElementById("label5").textContent = result["Status"];
+						
+						result = liststepData.find(row => row["Nomor"] === 6);
+						document.getElementById("label6").textContent = result["Status"];
+					}
+
+				} catch (err) {
+				  console.error("Error fetching data:", err);
+				  alert("Failed to load data. Please try again later.");
+				} finally {
+					//loader.style.display = "none"; // hide loader
+				}*/
+
+				try {
+					const response = await fetch(sheetURLlast4years);
+				  staffData = await response.json();
+				  if (staffData.length > 0) {
+						headers = Object.keys(staffData[0]);
+
+						/*staffData.forEach(record => {
+							if(record["Unique NIP"]===null){}
+							else
+								{
+									//console.log(record["Unique NIP"]);
+									nipforsuggestion.push(record["Unique NIP"]);
+								}
+							});*/
+
+						/*let i=0;
+						nipforsuggestion.forEach(record => {
+							if(record[i]===null){}
+							else
+							{
+								nipforsuggestion.push(record[i]);
+								//console.log(nipforsuggestion[i]);
+								i++;
+							}
+						});*/
+
+						for (let i = 0; i < staffData.length; i++) {
+							if(staffData[i].UniqueNIP.toString()==="")
+							{}
+							else
+							{nipforsuggestion.push(staffData[i].UniqueNIP.toString());}
+						}
+
+				  }
+
+				  const responseListStep = await fetch(sheetURLliststep);
+				  liststepData = await responseListStep.json();
+
+				  if (liststepData.length > 0) {
+						liststepHeaders = Object.keys(liststepData[0]);
+						
+						result = liststepData.find(row => row["Nomor"] === 1);
+						document.getElementById("label1").textContent = result["Status"];
+						
+						result = liststepData.find(row => row["Nomor"] === 2);
+						document.getElementById("label2").textContent = result["Status"];
+						
+						result = liststepData.find(row => row["Nomor"] === 3);
+						document.getElementById("label3").textContent = result["Status"];
+						
+						result = liststepData.find(row => row["Nomor"] === 4);
+						document.getElementById("label4").textContent = result["Status"];
+						
+						result = liststepData.find(row => row["Nomor"] === 5);
+						document.getElementById("label5").textContent = result["Status"];
+						
+						result = liststepData.find(row => row["Nomor"] === 6);
+						document.getElementById("label6").textContent = result["Status"];
+					}
+				}
+				catch (err) {
+					console.error("Error fetching data:", err);
+				  alert("Failed to load data. Please try again later.");
+				}
+				finally {
+					loader.style.display = "none"; // hide loader
+					console.log("done fetching " + staffData.length.toString() + " staffData and " + nipforsuggestion.length.toString() + " nipforsuggestion");
+					document.getElementById("nipSearch").disabled = false;
+					//console.log(staffData[0].Nama);
+					//console.log(liststepData);
+				}
 	  }
 
 
@@ -536,9 +634,9 @@
 
 		if (query.length < 1) return;
 
-		const matches = staffData.filter(r => r["NIP"].toString().includes(query));
+		//const matches = staffData.filter(r => r["NIP"].toString().includes(query));
 		
-		matches.forEach(match => {
+		/*matches.forEach(match => {
 		  const li = document.createElement("li");
 		  li.textContent = match["NIP"];
 		  li.onclick = () => {
@@ -547,7 +645,23 @@
 			showDetails(match["NIP"]);
 		  };
 		  suggestionsBox.appendChild(li);
-		});
+		});*/
+
+		for (let i = 0; i < nipforsuggestion.length; i++) {
+		  //if(nipforsuggestion[i].startsWith(query)) {
+			let s = "" + nipforsuggestion[i]?.toString() || "";
+			if(s.startsWith(query)) {
+		  	const li = document.createElement("li");
+		  	li.textContent = nipforsuggestion[i];
+		  	li.onclick = () => {
+		  		document.getElementById("nipSearch").value = nipforsuggestion[i];
+					suggestionsBox.innerHTML = "";
+					showDetails(nipforsuggestion[i]);
+		  	};
+		  	suggestionsBox.appendChild(li);
+		  }
+		}
+		
 	  }
 
 
@@ -556,6 +670,7 @@
 		detailsDiv.innerHTML = "";
 		
 		const staff = staffData.find(r => r["NIP"].toString() === nip);
+		console.log(staff);
 		if (!staff) return;
 		
 		const trackerContainer = document.getElementById("tracker-container");
@@ -588,13 +703,18 @@
 		element.appendChild(paraNoSK);
 		*/
 		
+		//-------------------------------------------------
+
+		
 		const sheetURLlastprogress = "https://script.google.com/macros/s/AKfycbzN_NG4MuLUT7AhpF6MECPsx9zItg7pX8o_biWCfohjACttkqe2LVdm3XZOqUDvACWU/exec";
 		let progressData = [];
 		let headersProgress = [];
-		let result = [];
+		
 		let counterProgress = 0;
 		let progressStatus = 0;
 		
+		result = [];
+
 		async function fetchDataLastProgress() {
 			const loader = document.getElementById("loader");
 			loader.style.display = "block"; // show loader
@@ -605,19 +725,24 @@
 			const jk = document.getElementById("judulket");
 			const nt = document.getElementById("namatim");
 			const kt = document.getElementById("kontaktim");
+			const np = document.getElementById("namaPegawai");
+
+			np.textContent = "";
 			
 			try {
-			  const responseLP = await fetch(sheetURLlastprogress);
-			  progressData = await responseLP.json();
+			  //const responseLP = await fetch(sheetURLlastprogress);
+			  //progressData = await responseLP.json();
+			  progressData = staffData;
 
 			  if (progressData.length > 0) {
-				headersProgress = Object.keys(progressData[0]);
-				//element.appendChild(document.createElement("p").appendChild(document.createTextNode(progressData.length)));
+					headersProgress = Object.keys(progressData[0]);
+					//element.appendChild(document.createElement("p").appendChild(document.createTextNode(progressData.length)));
+					np.textContent = staff["Nama"].toString();
 			  }
 			  else
 			  {
-				resultDiv.innerHTML = "<p>No matching data found.</p>";
-				return;
+					resultDiv.innerHTML = "<p>No matching data found.</p>";
+					return;
 			  }
 			  
 			  const table = document.createElement("table");
@@ -631,33 +756,35 @@
 			  table.appendChild(headerRow);
 
 			  progressData.forEach(record => {
-				if(record["NIP"]===nip && record["No SK"]===staff["Nomor SK Terakhir"]) {
-					const row = document.createElement("tr");
-					Object.values(record).forEach(v => {
-					  const td = document.createElement("td");
-					  td.textContent = v;
-					  row.appendChild(td);
-					});
-					
-					table.appendChild(row);
-					counterProgress += 1;
-					
-					/*if(Number(record["Status"].slice(-4).slice(1)) > progressStatus) {
-						progressStatus = ;
-					}*/
-					
-					let stringStatus = record["Status"].slice(-4);
-					if(progressStatus < Number(stringStatus[0])) {
-						progressStatus = Number(stringStatus[0]);
+					if(record["NIP"]===nip && record["Indikator SK Terakhir"]==="SK Terakhir") {
+						const row = document.createElement("tr");
+						Object.values(record).forEach(v => {
+						  const td = document.createElement("td");
+						  td.textContent = v;
+						  row.appendChild(td);
+						});
+						
+						table.appendChild(row);
+						counterProgress += 1;
+						
+						//if(Number(record["Status"].slice(-4).slice(1)) > progressStatus) {
+							//progressStatus = ;}
+						
+						let stringStatus = record["Status"].slice(-4);
+						if(progressStatus < Number(stringStatus[0])) {
+							progressStatus = Number(stringStatus[0]);
+						}
+						//console.log();
 					}
-					//console.log();
-				}
+					else
+						{
+							//console.log("not found NIP: "+nip+" with No SK: "+staff["Nomor SK Terakhir"]);
+						}
 			  });
 			  
 			  
-			  
-			  /*const element = document.getElementById("details");
-			  element.appendChild(document.createElement("p").appendChild(document.createTextNode(counterProgress)));*/
+			  //const element = document.getElementById("details");
+			  //element.appendChild(document.createElement("p").appendChild(document.createTextNode(counterProgress)));
 			  
 			  const progressPercentage = document.getElementById("progress-line");
 			  const stepsAt1 = document.getElementById("step1");
@@ -858,6 +985,7 @@
 			  
 				//get by filter status, nip, no sk 
 				tempLabel = document.getElementById("label1").textContent;
+				result = [];
 				result = progressData.find(row => row["Status"] === tempLabel && row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
 				//get tanggal input, show as local format
 				if(result?.["Tanggal Input"]) {
@@ -953,7 +1081,7 @@
 			  
 			  trackerContainer.style.display = ""; //show tracker
 			  
-			  result = progressData.find(row => /*row["Status"] === tempLabel &&*/ row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
+			  result = progressData.find(row => row["NIP"] === nip && row["Indikator SK Terakhir"] === "SK Terakhir");
 			  document.getElementById("dSKnosk").textContent = result["No SK"];
 			  
 			  tempTanggalInput = new Date(result["Tgl SK"]);
@@ -1001,12 +1129,15 @@
 			  document.getElementById("dSKjkg").textContent = result["Jenis Kenaikan Gaji"];
 			  document.getElementById("dSKkppn").textContent = result["KPPN"];
 			  
+			  counterProgress = Number(result["Status"].toString().substr(-4).charAt(0));
+
 			  jk.textContent = "";
 			  jk.textContent = "Penanggung Jawab Tahap " + counterProgress + ":";
+			  result = [];
 			  result = liststepData.find(row => row["Nomor"] === counterProgress);
 			  nt.textContent = result["Penanggung Jawab"];
 			  kt.textContent = result["Kontak"];
-			  
+
 			  divDetailSK.style.display = "block"; //show detail SK
 			  divKeterangan.style.display = "block"; //show keterangan
 
@@ -1021,10 +1152,8 @@
 		
 		
 		
-		const lp = progressData.find(rowLP => rowLP["NIP"].toString() === nip);
-		if (!lp) {
-			return;
-		}
+			const lp = progressData.find(rowLP => rowLP["NIP"].toString() === nip);
+			if (!lp) {return;}
 	  }
 
 	 
@@ -1037,3 +1166,4 @@
 
 </body>
 </html>
+
